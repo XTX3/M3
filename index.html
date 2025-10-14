@@ -1,0 +1,557 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>نظام مشتريات - محاسبة</title>
+  <link href="https://fonts.googleapis.com/css2?family=Almarai:wght@400;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --pink: #ec4899;
+      --purple: #8b5cf6;
+      --yellow: #facc15;
+      --sidebar-width: 240px;
+      --main-radius: 13px;
+      --bg: #f6f6fa;
+    }
+    body {
+      margin:0; font-family: Almarai ,Tahoma,Arial,sans-serif;
+      background: var(--bg);
+      color: #2d3748;
+      min-height:100vh;
+    }
+    .sidebar {
+      position: fixed;top: 0; right: -252px;height:100vh;width:var(--sidebar-width);z-index:12;
+      background: linear-gradient(123deg, #fff3ec 60%, #ffe4fa 120%);
+      box-shadow: -6px 0 17px #c084fc1a;
+      border-right: 1px solid #f3d1e1;
+      padding: 36px 11px 11px 0;
+      transition: right .35s cubic-bezier(.4,1,.2,1);
+      display: flex;flex-direction:column;gap:11px;
+    }
+    .sidebar.open { right: 0; }
+    .sidebar .close-btn {position: absolute;left:18px;top:10px;font-size:20px;background:none;border:none;color:var(--pink);cursor:pointer;}
+    .sidebar h3 {margin:0 0 18px 0;color:var(--purple);}
+    .sidebar ul {list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:7px;}
+    .sidebar li {
+      padding:10px 7px 10px 0;font-size:1.05rem;border-radius:6px;cursor:pointer;transition:.22s;
+      color:#8b5cf6;font-weight:bold;
+    }
+    .sidebar li.active, .sidebar li:hover { background:#ffeaf6; color:var(--pink);}
+    .sidebar .section-footer{margin-top:auto;}
+    .open-sidebar-btn {
+      background:#f6defd; color:var(--purple);
+      position:fixed;top:19px;right:17px;z-index:13;
+      border:none;border-radius:11px;
+      font-size:22px;padding:10px 15px;box-shadow:0 2px 7px #f1cbfa88;cursor:pointer;
+      transition:.2s;
+    }
+    .open-sidebar-btn:active{background:#ecc9fc;}
+    .container {max-width:925px;margin:50px auto 0;padding:13px;}
+    .main-topbar {display:flex;align-items:center;justify-content:space-between;}
+    .summary {display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin-bottom:21px;}
+    .summary-card {
+      background: linear-gradient(101deg,#fff9ef 55%,#fae0f7 100%);
+      border-radius:13px; box-shadow: 0 2px 12px #ecc9fc21;
+      padding:17px;font-size:1.08rem;text-align: center;font-weight:700;
+    }
+    .summary-card span {display:block;font-size:1.23rem;color:var(--purple);font-weight:bolder;}
+    #records, #approved-section, #rejected-section {margin:16px 0;}
+    .card {
+      background:#fff;border-radius:12px;box-shadow:0 4px 15px #bcf0fd11;
+      padding:19px 8px 12px 8px;margin-bottom:11px;font-size: 1.01rem;
+      transition:box-shadow .21s;
+    }
+    .card:hover{box-shadow:0 10px 30px #fdeffb39;}
+    .card ul{margin:6px 0 0 0;}
+    .grid{display:grid;gap:8px;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));}
+    .btn{border:none;border-radius:8px;padding:6px 15px;margin:5px 2px;font-weight:700;cursor:pointer;}
+    .btn-approve{background: #22c55e;color:#fff;}
+    .btn-reject{background: #ef4444;color:#fff;}
+    .btn-export{background: #fcd34d; color:#6d28d9;}
+    .btn-ghost{background:#ffe4e6;color:#db2777;}
+    .small{font-size:.95em;color:#64748b;}
+    .toast {
+      position:fixed;left: 50%; bottom: 27px; transform:translateX(-50%);
+      background:linear-gradient(95deg, #f7fee7 30%, #dbeafe);color:#a21caf;
+      z-index:99; font-weight:700; border-radius: 8px;
+      padding:13px 26px;font-size:1.05rem;box-shadow:0 2px 11px #fed7e222;
+      animation: fadeInOut 2.6s linear forwards;
+    }
+    @keyframes fadeInOut {0%{opacity:0;}11%{opacity:1;}92%{opacity:1;}100%{opacity:0;}}
+    #auth-wrap{
+      min-height:100vh;display:flex;align-items:center;justify-content:center;background:#f8fafc;
+    }
+    .auth-card{
+      padding:31px 25px;background:#fff;border-radius:19px;box-shadow:0 6px 28px #f9a8d4a8;text-align:center;
+      width:335px;max-width:98vw;animation:fadeInUp .8s;
+    }
+    .auth-card h2 {
+      font-family:inherit; color:var(--pink);font-size:2rem;margin:0 0 18px 0;letter-spacing:2px;
+    }
+    .auth-input {
+      display:block;margin:14px auto;width:89%;padding:12px 13px;border-radius:8px;
+      border:1.6px solid #f3d7eb;font-size:1.1rem;background:#fdf2f8;
+      outline:none;transition:border .15s;
+    }
+    .auth-input:focus { border:1.6px solid var(--purple);}
+    .auth-btn {
+      margin-top:14px;padding:12px 36px;border:none;border-radius:9px;
+      background:linear-gradient(90deg,#f472b6,#a5b4fc);color:#fff;
+      font-weight:bold;font-size:1.12rem;
+      box-shadow:0 3px 12px #8b5cf666;cursor:pointer;transition:.23s;
+    }
+    .auth-btn:hover {background:linear-gradient(92deg,#d946ef,#fbbf24);}
+    @keyframes fadeInUp {
+      from{opacity:0;transform:translateY(45px);} to{opacity:1;transform:translateY(0);}
+    }
+    .stats-wrap {
+      background: #fff;
+      margin:37px 0 0 0;padding:22px 6px 16px 6px;
+      border-radius:20px; box-shadow:0 3px 17px #ecc9fc29;text-align:center;
+      animation: fadeInUp .83s;
+    }
+    .stats-title {font-size:1.2em;letter-spacing:.5px;color:var(--pink);}
+    .chartWrap {max-width:99vw;margin:auto; }
+    .chartjs-render-monitor {
+      filter: drop-shadow(0 0 7px #fbcfe8);
+      animation:tradePulse 2.5s infinite;
+    }
+    @keyframes tradePulse {
+      0%,100%{filter:drop-shadow(0 0 5px #a5b4fc22);}
+      30%{filter:drop-shadow(0 0 21px #d946ef11);}
+      50%{filter:drop-shadow(0 0 35px #9333ea29);}
+      70%{filter:drop-shadow(0 0 12px #fbbf24);}
+    }
+    .stats-legend {
+      margin-top:13px;display:flex;gap:15px;justify-content:center;flex-wrap:wrap;
+    }
+    .stats-legend span{font-size:.97em;padding:7px 19px;border-radius:8px;background:#fce7f3;color:var(--purple);}
+    @media(max-width:600px){
+      .container{padding:2px;}
+      .sidebar{width:90vw;min-width:180px;}
+    }
+    @media(max-width:410px){
+      .auth-card{padding:13px 4px;}
+    }
+  </style>
+</head>
+<body>
+<!-- زر القائمة -->
+<button id="openSidebarBtn" class="open-sidebar-btn" title="القائمة">☰</button>
+<!-- القائمة الجانبية -->
+<aside id="sidebar" class="sidebar">
+  <button class="close-btn" title="إغلاق القائمة">×</button>
+  <h3>القائمة</h3>
+  <ul>
+    <li data-section="main" class="active">قيد المراجعة</li>
+    <li data-section="approved">الموافق عليها</li>
+    <li data-section="rejected">المرفوضة</li>
+    <li data-section="archive">أرشفة المبيعات</li>
+  </ul>
+  <div class="section-footer small" style="margin-top:19px;">
+    منصة محاسبة مشتريات ©
+  </div>
+</aside>
+<!-- واجهة تسجيل دخول عصرية -->
+<div id="auth-wrap">
+  <form id="loginForm" class="auth-card" onsubmit="return false;">
+    <h2>تسجيل الدخول</h2>
+    <input class="auth-input" type="email" id="email" placeholder="البريد الإلكتروني" required>
+    <input class="auth-input" type="password" id="password" placeholder="كلمة المرور" required>
+    <button id="loginBtn" class="auth-btn" type="submit">دخول</button>
+    <div id="auth-error" style="color:#dc2626;font-weight:600;min-height:24px;margin:6px 0 0 0;"></div>
+  </form>
+</div>
+<!-- الموقع الرئيسي -->
+<div id="main-site" style="display:none;">
+  <div class="container">
+    <div class="main-topbar">
+      <span id="authInfo"></span>
+      <button id="logoutBtn" class="btn btn-ghost">خروج</button>
+    </div>
+    <div class="summary" id="summary">
+      <div class="summary-card"><span id="sum-devices">0</span>📱 الأجهزة</div>
+      <div class="summary-card"><span id="sum-accessories">0</span>🎧 الإكسسوارات</div>
+      <div class="summary-card"><span id="sum-total">0</span>💰 الكلي</div>
+      <div class="summary-card"><span id="count-today">0</span>📅 عدد اليوم</div>
+    </div>
+    <!-- الأقسام -->
+    <div id="main-section">
+      <div style="display:flex;gap:10px;align-items:center;">
+        <input id="search-bar" type="text" placeholder="بحث عن جهاز أو شخص ..." style="margin-bottom:9px;width:66%;max-width:250px;padding:7px 11px;border-radius:8px;border:1px solid #e9d5ff;">
+        <button id="export-csv" class="btn btn-export">⬇️ تصدير (CSV)</button>
+      </div>
+      <div id="records"></div>
+    </div>
+    <div id="approved-section" style="display:none;"></div>
+    <div id="rejected-section" style="display:none;"></div>
+    <!-- القسم: أرشفة -->
+    <div id="archive-section" style="display:none;">
+      <button id="archiveBtn" class="btn btn-ghost" style="margin-bottom:17px;">📦 أرشفة مبيعات اليوم</button>
+      <div class="small" style="margin-bottom:12px;">يمكنك تحميل بيانات أي يوم تم أرشفته.</div>
+      <div id="archive-list"></div>
+    </div>
+    <!-- إحصائيات -->
+    <div class="stats-wrap" style="margin-bottom:15px;">
+      <div class="stats-title">📊 إحصائيات مبيعات الشهر الحالي</div>
+      <div class="chartWrap"><canvas id="statsChart" height="180"></canvas></div>
+      <div class="stats-legend">
+        <span id="topPhone"></span>
+        <span id="topAcc"></span>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- الإشعار -->
+<div id="toast-box"></div>
+<script type="module">
+//---- إعداد firebase ----
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
+import { getFirestore, collection, query, where, getDocs, updateDoc, doc, serverTimestamp, addDoc } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
+  const firebaseConfig = {
+  apiKey: "AIzaSyBDXxHychRg1R66JkAFJID5lqTTceZVwRU",
+  authDomain: "uusuf-9a3a3.firebaseapp.com",
+  projectId: "uusuf-9a3a3",
+  storageBucket: "uusuf-9a3a3.firebasestorage.app",
+  messagingSenderId: "1012380938241",
+  appId: "1:1012380938241:web:df21898655c5f6212e1000",
+  measurementId: "G-1BS7HG6PYC"
+};
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+//---- عناصر الواجهة ----
+const loginForm = document.getElementById("loginForm"), mainSite = document.getElementById("main-site"), authWrap = document.getElementById("auth-wrap"), authError = document.getElementById("auth-error"), loginBtn = document.getElementById("loginBtn"), authInfo = document.getElementById("authInfo"), logoutBtn = document.getElementById("logoutBtn");
+const sidebar = document.getElementById("sidebar"), openSidebarBtn = document.getElementById("openSidebarBtn");
+const sumDevicesEl = document.getElementById("sum-devices"), sumAccessoriesEl = document.getElementById("sum-accessories"), sumTotalEl = document.getElementById("sum-total"), countTodayEl = document.getElementById("count-today");
+const recordsDiv = document.getElementById("records"), searchBar = document.getElementById("search-bar"), exportCsvBtn = document.getElementById("export-csv"), toastBox = document.getElementById("toast-box");
+const approvedSection = document.getElementById("approved-section"), rejectedSection = document.getElementById("rejected-section"), mainSection = document.getElementById("main-section"), statsChartEl = document.getElementById( statsChart );
+const archiveSection = document.getElementById("archive-section"), archiveBtn = document.getElementById("archiveBtn"), archiveListDiv = document.getElementById("archive-list");
+const allowedEmail = "verify@example.com";
+let currentUser=null, allRecords=[], chartIns=null, approvedRecords=[], rejectedRecords=[];
+//--- القائمة الجانبية
+openSidebarBtn.onclick=()=>sidebar.classList.add("open");
+sidebar.querySelector(".close-btn").onclick=()=>sidebar.classList.remove("open");
+sidebar.querySelectorAll("li").forEach(li=>{
+  li.onclick=()=>{
+    sidebar.querySelectorAll("li").forEach(l=>l.classList.remove("active"));
+    li.classList.add("active");
+    showSection(li.dataset.section);
+    sidebar.classList.remove("open");
+  }
+});
+function showSection(section){
+  [mainSection,approvedSection,rejectedSection,archiveSection].forEach(s=>s.style.display="none");
+  if(section==="main") mainSection.style.display="block";
+  if(section==="approved") {approvedSection.style.display="block";loadApproved();}
+  if(section==="rejected") {rejectedSection.style.display="block";loadRejected();}
+  if(section==="archive") {archiveSection.style.display="block";loadArchiveList();}
+}
+showSection("main");
+//--- تسجيل الدخول
+loginForm.onsubmit = async ()=>{
+  const email = loginForm.email.value.trim(), pass = loginForm.password.value;
+  authError.textContent = "";
+  if(email.toLowerCase()!==allowedEmail){
+    showToast("الحساب غير مصرح به","warn");
+    authError.textContent = "❌ الحساب غير مصرح له بالدخول."; return;}
+  try{loginBtn.disabled=true; await signInWithEmailAndPassword(auth, email, pass);}
+  catch(e){showToast("فشل تسجيل الدخول 🚫","warn");authError.textContent ="خطأ: "+ e.message;}
+  finally{loginBtn.disabled=false;}
+};
+onAuthStateChanged(auth, user=>{
+  currentUser=user;
+  if(user){authWrap.style.display="none";mainSite.style.display="block";authInfo.textContent = "مرحباً "+user.email;loadAll();}
+  else{mainSite.style.display="none";authWrap.style.display="flex";loginForm.password.value="";}
+});
+logoutBtn.onclick=()=>signOut(auth);
+function showToast(text,type="info"){const d=document.createElement("div");d.className="toast"+(type==="warn"?" warn":"");d.textContent=text;toastBox.appendChild(d);setTimeout(()=>d.remove(),2600);}
+function formatSAR(x){return Number(x||0).toLocaleString()+" ر.س";}
+//--- السجلات ---
+async function loadAll(){
+  loadSummary();
+  loadApprovedToday();
+  loadRecords();
+  loadMonthlyStats(); // إحصائيات الشهر الحالي الجديدة
+  loadArchiveList();
+}
+async function loadSummary(){
+  const q = query(collection(db,"purchases"), where("status", "==", "approved")),s = await getDocs(q);
+  let dev=0,acc=0;
+  s.forEach(ds=>{const d=ds.data();dev+=parseFloat(d.price)||0;if(Array.isArray(d.accessories))acc+=d.accessories.reduce((a,x)=>a+(parseFloat(x.price)||0),0);});
+  sumDevicesEl.textContent=formatSAR(dev);sumAccessoriesEl.textContent=formatSAR(acc);sumTotalEl.textContent=formatSAR(dev+acc);
+}
+async function loadApprovedToday(){
+  const today=new Date();today.setHours(0,0,0,0);const q=query(collection(db, "purchases"), where("status", "==", "approved")),s=await getDocs(q);
+  let cnt=0;s.forEach(ds=>{const d=ds.data();if(!d.approvedAt)return;const dt=d.approvedAt.toDate?d.approvedAt.toDate():new Date(d.approvedAt);if(dt>=today)cnt++;});countTodayEl.textContent=cnt;
+}
+async function loadRecords(){
+  recordsDiv.innerHTML = "🕐 جار تحميل السجلات...";
+  allRecords=[];const q=query(collection(db,"purchases"),where("status","==","pending_verification")),s=await getDocs(q);
+  s.forEach(ds=>{const d=ds.data();d.id=ds.id;allRecords.push(d);});drawRecords(allRecords,recordsDiv,true);
+}
+function drawRecords(list,container,actions){
+  if(!list.length){container.innerHTML="<p>لا يوجد سجلات حالياً.</p>";return;}
+  container.innerHTML="";list.forEach(d=>{
+    const acc=d.accessories?.length?`<ul>${d.accessories.map(a=> `<li>${a.type} - ${a.price} ريال</li>`).join("")}</ul>`:"<em>لا يوجد</em>";
+    const c=document.createElement("div");c.className="card";
+    c.innerHTML=`<div class="grid"><div><b>الهاتف:</b> ${d.phoneName}</div><div><b>الرام:</b> ${d.ram}</div><div><b>الذاكرة:</b> ${d.storage}</div><div><b>السعر:</b> ${d.price} ريال</div><div><b>المسؤول:</b> ${d.createdByEmail}</div></div>
+    <div><b>الإكسسوارات:</b> ${acc}</div>
+    <div class="small" style="margin:8px 0 5px 0;">الحالة : <b>${d.status}</b></div>
+    <div style="display:flex;gap:8px;${!actions? display:none; :  }">
+    <button class="btn btn-approve" data-id="${d.id}">قبول ✅</button>
+    <button class="btn btn-reject" data-id="${d.id}">رفض ❌</button></div>`;
+    if(actions){
+      c.querySelector(".btn-approve").onclick=()=>doApprove(d.id,c);
+      c.querySelector(".btn-reject").onclick=()=>doReject(d.id,c);
+    }
+    container.appendChild(c);
+  });}
+async function doApprove(id,card){
+  if(!confirm("تأكيد الموافقة؟"))return;
+  await updateDoc(doc(db,"purchases",id),{status:"approved",approvedAt:serverTimestamp()});
+  card.remove();showToast("تمت الموافقة بنجاح","info");loadSummary();loadApprovedToday();loadMonthlyStats();}
+async function doReject(id,card){
+  if(!confirm("تأكيد الرفض؟"))return;
+  await updateDoc(doc(db,"purchases",id),{status:"rejected"});
+  card.remove();showToast("تم الرفض","warn");loadSummary();loadMonthlyStats();}
+searchBar.oninput=()=>{const v=searchBar.value.trim().toLowerCase();const f=allRecords.filter(d=>String(d.phoneName||"").toLowerCase().includes(v)||String(d.createdByEmail||"").toLowerCase().includes(v));drawRecords(f,recordsDiv,true);}
+exportCsvBtn.onclick=()=>{if(!allRecords.length){showToast("لا توجد بيانات!","warn");return;}let csv="الهاتف,الرام,الذاكرة,السعر,الحالة,المسؤول,الإكسسوارات\n";allRecords.forEach(r=>{let acc=(r.accessories||[]).map(a=>`${a.type}-${a.price}`).join("|");csv+=`${r.phoneName||""},${r.ram||""},${r.storage||""},${r.price||""},${r.status||""},${r.createdByEmail||""},${acc}\n`;});downloadFile(csv,"pending_records.csv");};
+// الموافقة والمرفوضة
+async function loadApproved(){
+  approvedSection.innerHTML="جاري التحميل ...";approvedRecords=[];
+  const q=query(collection(db,"purchases"),where("status","==","approved")),snap=await getDocs(q);
+  snap.forEach(ds=>{const d=ds.data();d.id=ds.id;approvedRecords.push(d);});
+  drawRecords(approvedRecords,approvedSection,false);
+}
+async function loadRejected(){
+  rejectedSection.innerHTML="جاري التحميل...";rejectedRecords=[];
+  const q=query(collection(db,"purchases"),where("status","==","rejected")),snap=await getDocs(q);
+  snap.forEach(ds=>{const d=ds.data();d.id=ds.id;rejectedRecords.push(d);});
+  drawRecords(rejectedRecords,rejectedSection,false);
+}
+function downloadFile(content, filename){const blob=new Blob([content],{type: text/csv }),url=URL.createObjectURL(blob),link=document.createElement("a");link.href=url;link.download=filename;link.click();link.remove();URL.revokeObjectURL(url);showToast("تم تحميل الملف","info");}
+
+/* ==== دعم أرشفة وتحميل الأرشيف ==== */
+
+archiveBtn.onclick = archiveToday;
+async function archiveToday() {
+  archiveBtn.disabled = true;
+  archiveBtn.textContent = "⏳ أرشفة ...";
+  // الحصول على اليوم والتاريخ الحالي كمرجع للارشيف
+  const now = new Date();
+  const dayStr = now.toISOString().substring(0,10);
+  const timeStr = now.toLocaleTimeString( ar-EG , { hour12: false });
+  const archiveId = `${dayStr}_${timeStr.replace(/:/g,  - )}`; // للوضوح
+  // استعلام لجمع كل السجلات (الموافق عليها/المرفوضة/قيد المراجعة) الموجودة الآن
+  const colRef = collection(db, "purchases");
+  const q = query(colRef);
+  const snap = await getDocs(q);
+
+  let allToday = [];
+  let stats = {
+    approved: [],
+    rejected: [],
+    pending: [],
+    todayTotal: 0,
+    deviceCount: 0,
+    accCount: 0
+  };
+  snap.forEach(ds => {
+    const d = ds.data();
+    d.id = ds.id;
+    allToday.push(d);
+    if (d.status === "approved") {
+      stats.approved.push(d);
+      stats.todayTotal += parseFloat(d.price) || 0;
+      stats.deviceCount++;
+      stats.accCount += Array.isArray(d.accessories) ? d.accessories.length : 0;
+    } else if (d.status === "rejected") {
+      stats.rejected.push(d);
+    } else if (d.status === "pending_verification") {
+      stats.pending.push(d);
+    }
+  });
+  if (allToday.length === 0) {
+    showToast("لا يوجد بيانات للأرشفة", "warn");
+    archiveBtn.disabled = false;
+    archiveBtn.textContent = "📦 أرشفة مبيعات اليوم";
+    await loadArchiveList();
+    return;
+  }
+  // حفظ ملخص اليوم في الأرشيف
+  const archRef = doc(db, "archive", archiveId);
+  await addDoc(collection(archRef, "data"), {
+    type: "summary",
+    date: dayStr,
+    time: timeStr,
+    total: stats.todayTotal,
+    deviceCount: stats.deviceCount,
+    accCount: stats.accCount,
+    archivedAt: new Date()
+  });
+  for (const cat of ["approved", "rejected", "pending"]) {
+    for (const r of stats[cat]) {
+      await addDoc(collection(archRef, cat), r);
+    }
+  }
+  // تحديث كل بيانات اليوم للحالة Archived (تصفير الموقع)
+  for (const d of allToday) {
+    await updateDoc(doc(db, "purchases", d.id), { status: "archived" });
+  }
+  showToast("تمت أرشفة كل البيانات وتفريغ النظام", "info");
+  archiveBtn.disabled = false;
+  archiveBtn.textContent = "📦 أرشفة مبيعات اليوم";
+  await loadAll();
+  await loadArchiveList();
+  sumDevicesEl.textContent = "0";
+  sumAccessoriesEl.textContent = "0";
+  sumTotalEl.textContent = "0";
+  countTodayEl.textContent = "0";
+  recordsDiv.innerHTML = "<p>لا يوجد سجلات حالياً.</p>";
+  approvedSection.innerHTML = "<p>لا يوجد سجلات حالياً.</p>";
+  rejectedSection.innerHTML = "<p>لا يوجد سجلات حالياً.</p>";
+  await loadMonthlyStats();
+}
+async function loadArchiveList() {
+  archiveListDiv.innerHTML = "جاري جلب الأرشيف...";
+  const snap = await getDocs(collection(db, "archive"));
+  let days = [];
+  for (const ds of snap.docs) {
+    let summarySnap = await getDocs(collection(ds.ref, "data"));
+    let summaryDoc = null;
+    summarySnap.forEach(doc_ => { if (doc_.data().type === "summary") summaryDoc = doc_.data(); });
+    days.push({ id: ds.id, summary: summaryDoc });
+  }
+  if (!days.length) {
+    archiveListDiv.innerHTML = "<div>لا يوجد أرشيف بعد.</div>";
+    return;
+  }
+  archiveListDiv.innerHTML = days.sort((a, b) => b.id.localeCompare(a.id)).map(day =>
+    `<div style="background:#fff8f3;border-radius:8px;margin-bottom:6px;padding:7px 11px;display:flex;align-items:center;justify-content:space-between;">
+      <div><b>التاريخ:</b> ${day.summary?.date || "-"} <b>الوقت:</b> ${day.summary?.time || "-"}<br/>
+        <span class="small">📝 أجهزة: ${day.summary?.deviceCount ?? 0} | 🎧 إكسسوارات: ${day.summary?.accCount ?? 0} | 💰 المجموع: ${day.summary?.total ?? 0} ر.س</span>
+      </div>
+      <button style="background:#a5b4fc;color:#fff;padding:4px 11px;border:none;border-radius:5px;cursor:pointer;" onclick="downloadArchive( ${day.id} )">تحميل الأرشيف</button>
+    </div>`
+  ).join("");
+}
+window.downloadArchive = async function(archiveId) {
+  showToast("تحميل الأرشيف ... " + archiveId, "info");
+  const archRef = doc(db, "archive", archiveId);
+  let content = `الهاتف,الرام,الذاكرة,السعر,الحالة,المسؤول,الإكسسوارات\n`;
+  for (const cat of ["approved", "rejected", "pending"]) {
+    const snap = await getDocs(collection(archRef, cat));
+    snap.forEach(ds => {
+      const r = ds.data();
+      let acc = (r.accessories || []).map(a => `${a.type}-${a.price}`).join("|");
+      content += `${r.phoneName||""},${r.ram||""},${r.storage||""},${r.price||""},${r.status||""},${r.createdByEmail||""},${acc}\n`;
+    });
+  }
+  const summarySnap = await getDocs(collection(archRef, "data"));
+  summarySnap.forEach(doc_ => {
+    const d = doc_.data();
+    if (d.type === "summary") {
+      content += `\nملخص اليوم,${d.date} ${d.time}\nالأجهزة: ${d.deviceCount},الإكسسوارات: ${d.accCount},المجموع: ${d.total}\n`;
+    }
+  });
+  downloadFile(content, `archive-${archiveId}.csv`);
+};
+
+/* ==== إحصائيات شهرية جميلة ودقيقة ==== */
+
+async function loadMonthlyStats(){
+  const snap = await getDocs(collection(db, "purchases"));
+  const today = new Date();
+  const start = new Date(today.getFullYear(), today.getMonth(), 1);
+  // تجهيز جميع أيام الشهر الحالي
+  let days = {};
+  for(let d = new Date(start); d <= today; d.setDate(d.getDate() + 1)) {
+    const key = d.toISOString().substring(0, 10);
+    days[key] = { devices: 0, total: 0 };
+  }
+  // للعرض التوضيحي: أكثر الأجهزة/الاكسسوارات
+  let phoneCount = {}, accCount = {};
+  snap.forEach(ds => {
+    const data = ds.data();
+    if(data.status !== "approved" || !data.approvedAt) return;
+    const d_ = data.approvedAt.toDate ? data.approvedAt.toDate() : new Date(data.approvedAt);
+    const key = d_.toISOString().substring(0, 10);
+    if(days[key]) {
+      days[key].devices += 1;
+      let accessoriesTotal = 0;
+      let accessoriesNames = [];
+      if(Array.isArray(data.accessories)) {
+        accessoriesTotal = data.accessories.reduce((a, x) => a + (parseFloat(x.price) || 0), 0);
+        data.accessories.forEach(x => {
+          accessoriesNames.push(x.type);
+          accCount[x.type] = (accCount[x.type]||0)+1;
+        });
+      }
+      days[key].total += (parseFloat(data.price) || 0) + accessoriesTotal;
+      phoneCount[data.phoneName] = (phoneCount[data.phoneName]||0)+1;
+    }
+  });
+  // استخراج الأيام والقيم
+  const labels = Object.keys(days);
+  const deviceCounts = labels.map(k => days[k].devices);
+  const totalCounts = labels.map(k => days[k].total);
+  // إظهار الأكثر مبيعاً (اذا فيه بيانات)
+  topPhone.innerText = "الهاتف الأكثر: "+ (Object.entries(phoneCount).sort((a,b)=>b[1]-a[1])[0]?.[0]||"-");
+  topAcc.innerText = "الإكسسوار الأكثر: "+ (Object.entries(accCount).sort((a,b)=>b[1]-a[1])[0]?.[0]||"-");
+  drawMonthlyChart(labels, deviceCounts, totalCounts);
+}
+function drawMonthlyChart(labels, deviceCounts, totalCounts) {
+  if(window.chartIns) window.chartIns.destroy();
+  window.chartIns = new Chart(statsChartEl.getContext("2d"), {
+    type: "line",
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          label: "عدد الأجهزة",
+          data: deviceCounts,
+          borderColor: "#f59e42",
+          backgroundColor: "rgba(250, 191, 36, 0.18)",
+          borderWidth: 3.2,
+          tension: 0.32,
+          pointRadius: 4,
+          pointHoverRadius: 9,
+          fill: true,
+        },
+        {
+          label: "إجمالي المال (ر.س)",
+          data: totalCounts,
+          borderColor: "#8b5cf6",
+          backgroundColor: "rgba(165, 180, 252, 0.13)",
+          borderWidth: 2.5,
+          borderDash: [2, 7],
+          tension: 0.29,
+          pointRadius: 3,
+          pointHoverRadius: 7,
+          fill: true,
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: {
+          position:  top ,
+          labels: { font: { family: "Almarai", size: 15 } }
+        }
+      },
+      interaction: { mode:  index , intersect: false },
+      scales: {
+        y: { beginAtZero: true, grid: { color: "#e5e7eb" }, ticks: { font: { family: "Almarai", size: 13 } } },
+        x: { grid: { color: "#f3f4f6" }, ticks: { font: { family: "Almarai", size: 13 } } }
+      }
+    }
+  });
+}
+</script>
+</body>
+    </html>
