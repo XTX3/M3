@@ -152,7 +152,7 @@ navTabs.querySelectorAll('button').forEach(btn=>{
 });
 
 // ------------- ملخص دقيق -------------
-function formatSAR(x){return Number(x||0).toLocaleString()+" ر.س";}
+function formatSAR(x){return Number(x||0).toLocaleString()+" $";}
 function showToast(text,type="info"){
   const d=document.createElement("div");d.className="toast"+(type==="warn"?" warn":"");d.textContent=text;
   toastBox.appendChild(d); setTimeout(()=>d.remove(),2600);
